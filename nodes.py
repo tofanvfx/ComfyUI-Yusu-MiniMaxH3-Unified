@@ -43,16 +43,20 @@ def parse_media_state(value: str | dict[str, Any] | None) -> dict[str, dict[str,
     try:
         state = json.loads(value) if isinstance(value, str) else value
     except (json.JSONDecodeError, TypeError) as error:
-        raise ValueError("MiniMax H3 媒体状态不是有效 JSON") from error
+        raise ValueError("MiniMax H3 media state is not valid JSON") from error
     if not isinstance(state, dict):
-        raise ValueError("MiniMax H3 媒体状态必须是 JSON 对象")
+        raise ValueError("MiniMax H3 media state must be a JSON object")
     return {str(key): item for key, item in state.items() if isinstance(item, dict)}
 
 
 def normalize_prompt_mentions(prompt: str) -> str:
     value = str(prompt or "")
-    for label, tag in (("图片", "Picture"), ("视频", "Video"), ("音频", "Audio")):
-        value = re.sub(rf"@{label}\s*(\d+)", rf"<{tag} \1>", value)
+    for pattern, tag in (
+        (r"(?:图片|Picture|Image)", "Picture"),
+        (r"(?:视频|Video)", "Video"),
+        (r"(?:音频|Audio)", "Audio"),
+    ):
+        value = re.sub(rf"@{pattern}\s*(\d+)", rf"<{tag} \1>", value, flags=re.IGNORECASE)
     return value
 
 
@@ -110,7 +114,7 @@ def _prepare_audio_slots(
             waveform = value.get("waveform")
             sample_rate = int(value.get("sample_rate", 0))
             if not torch.is_tensor(waveform) or waveform.ndim != 3 or sample_rate <= 0 or waveform.shape[-1] <= 0:
-                raise ValueError(f"{slot} 必须是非空 ComfyUI AUDIO")
+                raise ValueError(f"{slot} must be non-empty ComfyUI AUDIO")
             duration = int(waveform.shape[-1]) / sample_rate
             validate_audio_duration(duration, slot)
             audio = normalize_audio_for_h3(value)
@@ -132,20 +136,20 @@ def _state_trim_duration(item: dict[str, Any], label: str) -> float:
             total = candidate
             break
     if total <= 0:
-        raise ValueError(f"{label}缺少可用时长元数据，请重新上传该媒体")
+        raise ValueError(f"{label} is missing duration metadata, please re-upload this media")
 
     try:
         start = float(item.get("trim_start", 0.0) or 0.0)
         raw_end = float(item.get("trim_end", 0.0) or 0.0)
     except (TypeError, ValueError) as error:
-        raise ValueError(f"{label}裁剪时间不是有效数字") from error
+        raise ValueError(f"{label} trim time is not a valid number") from error
     if not math.isfinite(start) or not math.isfinite(raw_end):
-        raise ValueError(f"{label}裁剪时间必须是有限数字")
+        raise ValueError(f"{label} trim time must be a finite number")
     start = min(total, max(0.0, start))
     end = total if raw_end <= 0 else min(total, max(0.0, raw_end))
     duration = end - start
     if duration <= 0:
-        raise ValueError(f"{label}裁剪区间无效：{start:.3f}s–{end:.3f}s")
+        raise ValueError(f"Invalid trim range for {label}: {start:.3f}s - {end:.3f}s")
     validate_reference_duration(duration, label)
     return duration
 
@@ -166,7 +170,7 @@ def _embedded_audio_duration_candidates(
         ):
             # New uploads persist has_audio=False for silent videos. Older
             # workflows may not have this key, so None remains probe-compatible.
-            durations.append(_state_trim_duration(value, f"{slot} 原声"))
+            durations.append(_state_trim_duration(value, f"{slot} embedded audio"))
     return durations
 
 
@@ -177,21 +181,21 @@ def _resolve_frame_count(
 ) -> int:
     if auto_length_from_audio:
         if not audio_durations:
-            raise ValueError("已启用按音频自动长度，但当前没有可用参考音频")
+            raise ValueError("Auto length from audio is enabled, but no valid reference audio is available")
         seconds = max(float(value) for value in audio_durations)
     else:
         try:
             seconds = float(duration_seconds)
         except (TypeError, ValueError) as error:
-            raise ValueError("duration 必须是有效秒数") from error
+            raise ValueError("duration must be a valid number of seconds") from error
         if not math.isfinite(seconds):
-            raise ValueError("duration 必须是有限数字")
+            raise ValueError("duration must be a finite number")
         if seconds < 0:
-            raise ValueError(f"duration 不能小于 0 秒；当前为 {seconds:.3f} 秒")
+            raise ValueError(f"duration cannot be less than 0 seconds; currently {seconds:.3f} seconds")
 
     raw_frames = seconds * FPS
     if not math.isfinite(raw_frames):
-        raise ValueError("duration 数值过大，无法换算为帧数")
+        raise ValueError("duration value is too large to convert to frames")
     requested_length = max(0, int(round(raw_frames)))
     frame_count, _video_latent_t, _audio_latent_t = temporal_shape(requested_length)
     return int(frame_count)
@@ -216,11 +220,11 @@ class MiniMaxH3Unified(io.ComfyNode):
             node_id="MiniMaxH3Unified",
             display_name="Yusu MiniMax H3 Unified",
             category="Yusu/MiniMax/H3",
-            description="统一路由 MiniMax H3 FL2VA 与 Ref2VA，并支持节点内媒体上传。",
+            description="Unifies MiniMax H3 FL2VA and Ref2VA routing, with in-node media upload support.",
             inputs=[
                 io.DynamicCombo.Input(
                     "mode",
-                    tooltip="首尾帧与参考媒体接口按当前模式动态显示。clip、vae、audio_vae 始终显示。",
+                    tooltip="First/last frame and reference media inputs dynamically display based on the current mode. clip, vae, and audio_vae are always shown.",
                     options=[
                         io.DynamicCombo.Option("text_to_video", []),
                         io.DynamicCombo.Option(
@@ -248,7 +252,7 @@ class MiniMaxH3Unified(io.ComfyNode):
                                     "ref_videos",
                                     optional=True,
                                     template=io.Autogrow.TemplatePrefix(
-                                        input=io.Image.Input("ref_video", tooltip="24 FPS IMAGE 批次"),
+                                        input=io.Image.Input("ref_video", tooltip="24 FPS IMAGE batch"),
                                         prefix="ref_video_",
                                         min=0,
                                         max=SLOT_LIMITS["ref_video"],
@@ -257,9 +261,9 @@ class MiniMaxH3Unified(io.ComfyNode):
                                 io.Autogrow.Input(
                                     "ref_video_audios",
                                     optional=True,
-                                    tooltip="同编号参考视频的配对音轨组",
+                                    tooltip="Paired audio track group for matching reference video",
                                     template=io.Autogrow.TemplatePrefix(
-                                        input=io.Audio.Input("ref_video_audio", tooltip="同编号参考视频的替换音轨"),
+                                        input=io.Audio.Input("ref_video_audio", tooltip="Replacement audio track for matching reference video"),
                                         prefix="ref_video_audio_",
                                         min=0,
                                         max=SLOT_LIMITS["ref_video_audio"],
@@ -268,9 +272,9 @@ class MiniMaxH3Unified(io.ComfyNode):
                                 io.Autogrow.Input(
                                     "ref_audios",
                                     optional=True,
-                                    tooltip="独立参考音频组",
+                                    tooltip="Standalone reference audio group",
                                     template=io.Autogrow.TemplatePrefix(
-                                        input=io.Audio.Input("ref_audio", tooltip="独立参考音频"),
+                                        input=io.Audio.Input("ref_audio", tooltip="Standalone reference audio"),
                                         prefix="ref_audio_",
                                         min=0,
                                         max=SLOT_LIMITS["ref_audio"],
@@ -293,15 +297,15 @@ class MiniMaxH3Unified(io.ComfyNode):
                     min=MIN_OUTPUT_SECONDS,
                     step=0.1,
                     round=0.001,
-                    tooltip="输入目标秒数（允许 0，且不设上限）。节点会按 24 FPS 换算并向上对齐到 H3 的 17k+5 网格；0 秒会得到模型可接受的最小 5 帧。超长时长可能显著增加内存、显存和生成时间。",
+                    tooltip="Target duration in seconds (allows 0, no upper limit). Converted at 24 FPS and rounded up to H3's 17k+5 grid; 0s yields the model's minimum 5 frames. Extra long durations may significantly increase memory, VRAM, and generation time.",
                 ),
                 io.Boolean.Input(
                     "auto_length_from_audio",
-                    display_name="有音频时自动长度",
+                    display_name="Auto Length From Audio",
                     default=False,
-                    label_on="启用",
-                    label_off="关闭",
-                    tooltip="仅在 omni_reference 且存在有效参考音频时，按最长音频自动计算时长；开启后手动时长控件会变灰且不可操作。其他模式或无音频时回退到手动秒数。",
+                    label_on="Enabled",
+                    label_off="Disabled",
+                    tooltip="Calculates duration automatically based on the longest reference audio only in omni_reference mode when valid audio is present. When enabled, manual duration control is disabled. Falls back to manual duration in other modes or without audio.",
                 ),
                 io.String.Input("media_state", default="{}"),
             ],
@@ -311,8 +315,8 @@ class MiniMaxH3Unified(io.ComfyNode):
                 io.Audio.Output(
                     display_name="audio",
                     tooltip=(
-                        "输出当前实际参与参考的最长一段裁剪后音频；无参考音频时为 None。"
-                        "这是参考音频，不是采样后生成的视频音轨。"
+                        "Outputs the longest trimmed audio actually used as reference; None if no reference audio. "
+                        "This is reference audio, not the generated video soundtrack."
                     ),
                 ),
             ],
@@ -351,7 +355,7 @@ class MiniMaxH3Unified(io.ComfyNode):
             ref_videos = values.get("ref_videos", ref_videos)
             ref_video_audios = values.get("ref_video_audios", ref_video_audios)
             ref_audios = values.get("ref_audios", ref_audios)
-            # 新版 ComfyUI 前端可能把 widget 值以字符串传入
+            # Newer ComfyUI frontend may pass widget values as strings
             if values.get("width") is not None:
                 width = values["width"]
             if values.get("height") is not None:
@@ -369,12 +373,12 @@ class MiniMaxH3Unified(io.ComfyNode):
         ):
             external.update(autogrow_slots(prefix, values))
 
-        # 新版 ComfyUI 可能以字符串形式传入 widget 值，统一在此收敛为 int
+        # Newer ComfyUI frontend may pass widget values as strings, coerce to int here
         try:
             width = int(float(width))
             height = int(float(height))
         except (TypeError, ValueError, OverflowError) as error:
-            raise ValueError(f"width/height 必须是有效数值；当前为 {width!r} / {height!r}") from error
+            raise ValueError(f"width/height must be valid numbers; got {width!r} / {height!r}") from error
         validate_generation_size(width, height)
         state = parse_media_state(media_state)
         if mode in {"text_to_video", "first_last_frame"}:
@@ -385,14 +389,14 @@ class MiniMaxH3Unified(io.ComfyNode):
                 if last_frame is None and state.get("last_frame", {}).get("path"):
                     last_frame = load_image(state["last_frame"])
                 if first_frame is None and last_frame is None:
-                    raise ValueError("first_last_frame 模式至少需要首帧或尾帧")
+                    raise ValueError("first_last_frame mode requires at least a first frame or last frame")
             else:
                 first_frame = None
                 last_frame = None
             if first_frame is not None:
-                first_frame = validate_image_tensor(first_frame, "首帧")
+                first_frame = validate_image_tensor(first_frame, "first frame")
             if last_frame is not None:
-                last_frame = validate_image_tensor(last_frame, "尾帧")
+                last_frame = validate_image_tensor(last_frame, "last frame")
             positive, latent = MiniMaxH3ImageToVideo.execute(
                 clip=clip,
                 vae=vae,
@@ -407,9 +411,9 @@ class MiniMaxH3Unified(io.ComfyNode):
 
 
         if mode != "omni_reference":
-            raise ValueError(f"未知模式：{mode}")
+            raise ValueError(f"Unknown mode: {mode}")
         if ref_image_size not in {"match", "max"}:
-            raise ValueError(f"未知参考图尺寸模式：{ref_image_size}")
+            raise ValueError(f"Unknown reference image size mode: {ref_image_size}")
 
         image_slots = resolve_slots("ref_image", SLOT_LIMITS["ref_image"], state, external)
         video_slots = resolve_slots("ref_video", SLOT_LIMITS["ref_video"], state, external)
@@ -425,7 +429,7 @@ class MiniMaxH3Unified(io.ComfyNode):
         orphan_paired_slots = set(paired_slots) - expected_paired_slots
         if orphan_paired_slots:
             raise ValueError(
-                "配对音频缺少同编号视频：" + ", ".join(sorted(orphan_paired_slots))
+                "Paired audio is missing matching reference video: " + ", ".join(sorted(orphan_paired_slots))
             )
 
         # Decode explicit audio once. Its exact trimmed duration is then available
@@ -496,7 +500,7 @@ class MiniMaxH3Unified(io.ComfyNode):
             embedded_audio_count,
         )
         if ordered_reference_audio and audio_vae is None:
-            raise ValueError("包含参考音频时必须连接 audio_vae")
+            raise ValueError("audio_vae must be connected when reference audio is provided")
 
         output = MiniMaxH3ReferenceToVideo.execute(
             clip=clip,

@@ -245,17 +245,17 @@ class PluginTests(unittest.TestCase):
             shutil.rmtree(runtime)
 
     def test_numeric_validation_rejects_non_finite_values(self):
-        self.assertEqual(media.finite_float("1.25", "值"), 1.25)
-        with self.assertRaisesRegex(ValueError, "有限数字"):
-            media.finite_float(float("nan"), "值")
-        with self.assertRaisesRegex(ValueError, "有限数字"):
-            media.finite_float(None, "值")
+        self.assertEqual(media.finite_float("1.25", "value"), 1.25)
+        with self.assertRaisesRegex(ValueError, "finite number"):
+            media.finite_float(float("nan"), "value")
+        with self.assertRaisesRegex(ValueError, "finite number"):
+            media.finite_float(None, "value")
 
     def test_audio_normalization_preserves_official_channels_and_values(self):
         normalized = media.normalize_audio_for_h3(audio(2.0, channels=1, value=1.25))
         self.assertEqual(normalized["waveform"].shape, (1, 1, 64000))
         self.assertTrue(torch.all(normalized["waveform"] == 1.25))
-        with self.assertRaisesRegex(ValueError, "静音"):
+        with self.assertRaisesRegex(ValueError, "silent"):
             media.normalize_audio_for_h3(audio(value=0.0))
         bad = audio()
         bad["waveform"][0, 0, 0] = float("nan")
@@ -294,11 +294,15 @@ class PluginTests(unittest.TestCase):
             nodes.normalize_prompt_mentions("让 @图片1 在 @视频 2 中使用 @音频3 说话"),
             "让 <Picture 1> 在 <Video 2> 中使用 <Audio 3> 说话",
         )
-        with self.assertRaisesRegex(ValueError, "不是有效 JSON"):
+        self.assertEqual(
+            nodes.normalize_prompt_mentions("Let @Picture 1 in @Video 2 use @Audio 3 to speak"),
+            "Let <Picture 1> in <Video 2> use <Audio 3> to speak",
+        )
+        with self.assertRaisesRegex(ValueError, "not valid JSON"):
             nodes.parse_media_state("{bad")
-        with self.assertRaisesRegex(ValueError, "必须是 JSON 对象"):
+        with self.assertRaisesRegex(ValueError, "must be a JSON object"):
             nodes.parse_media_state("[]")
-        with self.assertRaisesRegex(ValueError, "非法媒体路径"):
+        with self.assertRaisesRegex(ValueError, "Invalid media path"):
             media.resolve_media_path("../secret.wav")
         for name in ("../bad.wav", "folder/bad.wav", "bad.exe"):
             with self.assertRaises(ValueError):
@@ -317,7 +321,7 @@ class PluginTests(unittest.TestCase):
 
     def test_generation_and_reference_limits(self):
         media.validate_generation_size(1344, 768)
-        with self.assertRaisesRegex(ValueError, "32 的倍数"):
+        with self.assertRaisesRegex(ValueError, "multiples of 32"):
             media.validate_generation_size(1920, 1080)
         self.assertEqual(media.official_reference_frame_count(362, 124), 124)
         self.assertEqual(media.official_reference_frame_count(120, 120), 107)
@@ -333,13 +337,13 @@ class PluginTests(unittest.TestCase):
         media.validate_reference_limits({"a": 1}, {}, {}, {"ref_audio_1": audio(30)}, [], [30])
         media.validate_reference_limits({}, {"ref_video_1": 1}, {"ref_video_audio_1": audio(30)}, {}, [2], [30])
         for duration in (1.999, float("nan"), float("inf")):
-            with self.assertRaisesRegex(ValueError, "不少于 2 秒"):
+            with self.assertRaisesRegex(ValueError, "at least 2 seconds"):
                 media.validate_audio_duration(duration)
         with self.assertRaisesRegex(ValueError, "2–15"):
             media.validate_reference_limits({}, {"ref_video_1": 1}, {}, {}, [15.001], [])
-        with self.assertRaisesRegex(ValueError, "唯一参考"):
+        with self.assertRaisesRegex(ValueError, "sole reference"):
             media.validate_reference_limits({}, {}, {}, {"ref_audio_1": audio()}, [], [2.0])
-        with self.assertRaisesRegex(ValueError, "同编号视频"):
+        with self.assertRaisesRegex(ValueError, "matching reference video"):
             media.validate_reference_limits({"a": 1}, {}, {"ref_video_audio_1": audio()}, {}, [], [2.0])
 
     def test_image_loader_applies_exif_orientation(self):
@@ -359,7 +363,7 @@ class PluginTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "broken.png"
             path.write_bytes(b"not a png")
-            with self.assertRaisesRegex(ValueError, "图片文件已损坏"):
+            with self.assertRaisesRegex(ValueError, "corrupted"):
                 media.validate_uploaded_file(path, "image")
 
     def test_ffprobe_validates_real_wav_without_pyav(self):
@@ -573,8 +577,8 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(result[2]["sample_rate"], 32000)
 
     def test_string_widget_values_are_coerced_to_numbers(self):
-        # 新版前端/部分环境下 widget 值可能以字符串到达 execute，
-        # 传给官方节点前必须收敛为 int，否则核心 // 16 会崩溃。
+        # In newer frontend or some environments widget values may arrive as strings.
+        # They must be coerced to int before passing to official nodes to avoid // 16 crashing.
         result = nodes.MiniMaxH3Unified.execute(
             mode="omni_reference",
             clip=object(),
@@ -725,7 +729,7 @@ class PluginTests(unittest.TestCase):
         image = torch.zeros(1, 32, 32, 3)
         with (
             patch.object(nodes, "_prepare_audio_slots") as prepare,
-            self.assertRaisesRegex(ValueError, "同编号视频"),
+            self.assertRaisesRegex(ValueError, "matching reference video"),
         ):
             nodes.MiniMaxH3Unified.execute(
                 mode="omni_reference",
@@ -752,7 +756,7 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(nodes._resolve_frame_count(0, False, []), 5)
         self.assertEqual(nodes._resolve_frame_count(124, False, []), 2980)
 
-        with self.assertRaisesRegex(ValueError, "不能小于 0"):
+        with self.assertRaisesRegex(ValueError, "cannot be less than 0"):
             nodes._resolve_frame_count(-0.1, False, [])
 
     def test_audio_output_selects_longest_reference_without_copying(self):

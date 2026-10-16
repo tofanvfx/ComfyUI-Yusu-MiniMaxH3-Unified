@@ -48,9 +48,9 @@ def finite_float(value: Any, label: str) -> float:
     try:
         number = float(value)
     except (TypeError, ValueError) as error:
-        raise ValueError(f"{label}必须是有限数字") from error
+        raise ValueError(f"{label} must be a finite number") from error
     if not np.isfinite(number):
-        raise ValueError(f"{label}必须是有限数字")
+        raise ValueError(f"{label} must be a finite number")
     return number
 
 
@@ -64,40 +64,40 @@ def positive_float(value: Any) -> float:
 
 def validate_generation_size(width: int, height: int) -> None:
     if width <= 0 or height <= 0:
-        raise ValueError("生成宽高必须为正整数")
+        raise ValueError("Generation width and height must be positive integers")
     if width % CANVAS_MULTIPLE or height % CANVAS_MULTIPLE:
         suggested_width = max(CANVAS_MULTIPLE, round(width / CANVAS_MULTIPLE) * CANVAS_MULTIPLE)
         suggested_height = max(CANVAS_MULTIPLE, round(height / CANVAS_MULTIPLE) * CANVAS_MULTIPLE)
         raise ValueError(
-            f"MiniMax H3 生成宽高必须都是 {CANVAS_MULTIPLE} 的倍数；"
-            f"当前为 {width}×{height}，建议改为 {suggested_width}×{suggested_height}"
+            f"MiniMax H3 generation dimensions must both be multiples of {CANVAS_MULTIPLE}; "
+            f"currently {width}×{height}, suggested {suggested_width}×{suggested_height}"
         )
 
 
-def validate_reference_duration(duration: float, label: str = "参考媒体") -> None:
+def validate_reference_duration(duration: float, label: str = "Reference media") -> None:
     if not MIN_REFERENCE_SECONDS <= duration <= MAX_REFERENCE_SECONDS:
-        raise ValueError(f"{label}必须为 {MIN_REFERENCE_SECONDS:g}–{MAX_REFERENCE_SECONDS:g} 秒")
+        raise ValueError(f"{label} must be {MIN_REFERENCE_SECONDS:g}–{MAX_REFERENCE_SECONDS:g} seconds")
 
 
-def validate_audio_duration(duration: float, label: str = "参考音频") -> None:
+def validate_audio_duration(duration: float, label: str = "Reference audio") -> None:
     if not np.isfinite(duration) or duration < MIN_REFERENCE_SECONDS:
-        raise ValueError(f"{label}必须为有限时长且不少于 {MIN_REFERENCE_SECONDS:g} 秒")
+        raise ValueError(f"{label} must have a finite duration of at least {MIN_REFERENCE_SECONDS:g} seconds")
 
 
 def normalize_audio_for_h3(audio: dict[str, Any]) -> dict[str, Any]:
     waveform = audio["waveform"]
     sample_rate = int(audio["sample_rate"])
     if not torch.is_tensor(waveform) or waveform.ndim != 3 or sample_rate <= 0 or waveform.shape[-1] <= 0:
-        raise ValueError("参考音频必须是非空 waveform [B,C,L] 和正采样率")
+        raise ValueError("Reference audio must be non-empty waveform [B,C,L] with positive sample rate")
     if sample_rate > MAX_AUDIO_SAMPLE_RATE:
-        raise ValueError(f"参考音频采样率过高：{sample_rate} Hz")
+        raise ValueError(f"Reference audio sample rate too high: {sample_rate} Hz")
     if waveform.shape[1] <= 0:
-        raise ValueError("参考音频不含有效声道")
+        raise ValueError("Reference audio contains no valid audio channels")
     waveform = waveform[:1].to(dtype=torch.float32).contiguous()
     if not torch.isfinite(waveform).all().item():
-        raise ValueError("参考音频包含 NaN 或无穷值")
+        raise ValueError("Reference audio contains NaN or infinite values")
     if float(waveform.abs().amax().item()) <= 1e-7:
-        raise ValueError("裁剪后的参考音频是静音，模型无法从中提取有效参考")
+        raise ValueError("Trimmed reference audio is silent; model cannot extract reference from silence")
     return {"waveform": waveform, "sample_rate": sample_rate}
 
 
@@ -105,25 +105,25 @@ def resolve_media_path(relative_path: str) -> Path:
     candidate = Path(relative_path)
     annotated = relative_path.endswith(("[input]", "[output]", "[temp]"))
     if candidate.is_absolute() or ".." in candidate.parts or not candidate.parts or annotated:
-        raise ValueError(f"非法媒体路径：{relative_path}")
+        raise ValueError(f"Invalid media path: {relative_path}")
     try:
         path = Path(folder_paths.get_annotated_filepath(candidate.as_posix())).resolve()
     except ValueError as error:
-        raise ValueError(f"媒体路径越界：{relative_path}") from error
+        raise ValueError(f"Media path out of bounds: {relative_path}") from error
     if not path.is_file():
-        raise FileNotFoundError(f"媒体文件不存在：{relative_path}")
+        raise FileNotFoundError(f"Media file does not exist: {relative_path}")
     return path
 
 
 def validate_upload_name(filename: str, content_type: str) -> tuple[str, str]:
     if not filename or Path(filename).name != filename or any(character in filename for character in ("/", "\\", "\0")):
-        raise ValueError("非法文件名")
+        raise ValueError("Invalid filename")
     extension = Path(filename).suffix.lower()
     if extension not in IMAGE_EXTENSIONS | VIDEO_EXTENSIONS | AUDIO_EXTENSIONS:
-        raise ValueError(f"不支持的扩展名：{extension or '无'}")
+        raise ValueError(f"Unsupported file extension: {extension or 'none'}")
     mime = content_type.split(";", 1)[0].lower().strip()
     if mime not in GENERIC_MIME and mime not in ALLOWED_MIME[extension]:
-        raise ValueError(f"MIME {mime} 与扩展名 {extension} 不匹配")
+        raise ValueError(f"MIME {mime} does not match extension {extension}")
     kind = "image" if extension in IMAGE_EXTENSIONS else "video" if extension in VIDEO_EXTENSIONS else "audio"
     return extension, kind
 
@@ -197,11 +197,11 @@ def probe_media(path: Path) -> dict[str, Any]:
                 check=False,
             )
             if result.returncode:
-                raise ValueError(f"ffprobe 无法读取媒体：{result.stderr.strip() or path.name}")
+                raise ValueError(f"ffprobe could not read media: {result.stderr.strip() or path.name}")
             data = json.loads(result.stdout)
             streams = data.get("streams", [])
             if not isinstance(streams, list):
-                raise ValueError(f"ffprobe 返回了无效流元数据：{path.name}")
+                raise ValueError(f"ffprobe returned invalid stream metadata: {path.name}")
             container_duration = positive_float(data.get("format", {}).get("duration"))
             video_durations = [
                 _duration_from_ffprobe_stream(stream)
@@ -237,7 +237,7 @@ def probe_media(path: Path) -> dict[str, Any]:
         return _probe_with_pyav(path)
     except Exception as pyav_error:
         detail = f"ffprobe={ffprobe_error}; PyAV={pyav_error}" if ffprobe_error is not None else str(pyav_error)
-        raise ValueError(f"无法读取媒体：{detail}") from pyav_error
+        raise ValueError(f"Failed to read media: {detail}") from pyav_error
 
 
 def validate_uploaded_file(path: Path, kind: str) -> dict[str, Any]:
@@ -246,21 +246,21 @@ def validate_uploaded_file(path: Path, kind: str) -> dict[str, Any]:
             with Image.open(path) as image:
                 expected = {".png": "PNG", ".jpg": "JPEG", ".jpeg": "JPEG", ".webp": "WEBP"}[path.suffix.lower()]
                 if image.format != expected:
-                    raise ValueError(f"图片内容格式 {image.format or '未知'} 与扩展名不匹配")
+                    raise ValueError(f"Image format {image.format or 'unknown'} does not match extension")
                 if image.width <= 0 or image.height <= 0 or image.width * image.height > MAX_IMAGE_PIXELS:
-                    raise ValueError(f"图片尺寸过大或无效：{image.width}×{image.height}")
+                    raise ValueError(f"Image dimensions too large or invalid: {image.width}×{image.height}")
                 image.verify()
         except (OSError, SyntaxError) as error:
-            raise ValueError("无法读取图片或图片文件已损坏") from error
+            raise ValueError("Cannot read image or image file is corrupted") from error
         return {"duration": 0.0, "has_video": False, "has_audio": False}
     metadata = probe_media(path)
     if kind == "video":
         if not metadata["has_video"]:
-            raise ValueError("上传文件不含视频流")
+            raise ValueError("Uploaded file does not contain a video stream")
         metadata["duration"] = metadata.get("video_duration") or metadata["duration"]
     else:
         if not metadata["has_audio"]:
-            raise ValueError("上传文件不含音频流")
+            raise ValueError("Uploaded file does not contain an audio stream")
         metadata["duration"] = metadata.get("audio_duration") or metadata["duration"]
     return metadata
 
@@ -268,7 +268,7 @@ def validate_uploaded_file(path: Path, kind: str) -> dict[str, Any]:
 def load_image(item: dict[str, Any]) -> torch.Tensor:
     with Image.open(resolve_media_path(str(item["path"]))) as image:
         if image.width <= 0 or image.height <= 0 or image.width * image.height > MAX_IMAGE_PIXELS:
-            raise ValueError(f"图片尺寸过大或无效：{image.width}×{image.height}")
+            raise ValueError(f"Image dimensions too large or invalid: {image.width}×{image.height}")
         oriented = ImageOps.exif_transpose(image)
         array = np.asarray(oriented.convert("RGB"), dtype=np.float32) / 255.0
     return torch.from_numpy(array.copy()).unsqueeze(0)
@@ -276,14 +276,14 @@ def load_image(item: dict[str, Any]) -> torch.Tensor:
 
 def validate_image_tensor(value: Any, label: str, *, min_frames: int = 1) -> torch.Tensor:
     if not torch.is_tensor(value) or value.ndim != 4:
-        raise ValueError(f"{label} 必须是 ComfyUI IMAGE [B,H,W,C]")
+        raise ValueError(f"{label} must be ComfyUI IMAGE [B,H,W,C]")
     if (
         int(value.shape[0]) < min_frames
         or int(value.shape[1]) <= 0
         or int(value.shape[2]) <= 0
         or int(value.shape[3]) < 3
     ):
-        raise ValueError(f"{label} 尺寸无效：{tuple(value.shape)}")
+        raise ValueError(f"Invalid {label} dimensions: {tuple(value.shape)}")
     return value
 
 
@@ -347,7 +347,7 @@ def _decode_audio_interval(
             return
         output_rate = int(frame.sample_rate or sample_rate)
         if output_rate != sample_rate:
-            raise ValueError(f"音频采样率在解码过程中变化：{sample_rate} → {output_rate}")
+            raise ValueError(f"Audio sample rate changed during decoding: {sample_rate} → {output_rate}")
         array = frame.to_ndarray()
         if array.ndim == 1:
             array = array[None, :]
@@ -389,34 +389,34 @@ def load_audio(item: dict[str, Any]) -> tuple[dict[str, Any], float]:
     align_to_video = bool(item.get("align_to_video"))
     with av.open(str(path)) as container:
         if not container.streams.audio:
-            raise ValueError(f"媒体文件不含音轨：{item['path']}")
+            raise ValueError(f"Media file contains no audio track: {item['path']}")
         stream = container.streams.audio[0]
         sample_rate = int(stream.sample_rate or 0)
         if sample_rate <= 0 or sample_rate > MAX_AUDIO_SAMPLE_RATE:
-            raise ValueError(f"音频采样率无效或过高：{sample_rate} Hz（{item['path']}）")
+            raise ValueError(f"Audio sample rate invalid or too high: {sample_rate} Hz ({item['path']})")
 
         metadata_duration = positive_float(item.get("audio_duration")) or positive_float(item.get("duration"))
         audio_duration = metadata_duration or _stream_duration_seconds(stream)
         if audio_duration <= 0 and container.duration is not None:
             audio_duration = positive_float(container.duration / av.time_base)
         if audio_duration <= 0:
-            raise ValueError(f"无法确定音频时长：{item['path']}")
+            raise ValueError(f"Cannot determine audio duration: {item['path']}")
 
         start_value = item.get("trim_start", 0.0)
-        requested_start = max(0.0, finite_float(0.0 if start_value in (None, "") else start_value, "音频裁剪入点"))
+        requested_start = max(0.0, finite_float(0.0 if start_value in (None, "") else start_value, "Audio trim start"))
         end_value = item.get("trim_end", 0.0)
-        raw_end = 0.0 if end_value in (None, "") else finite_float(end_value, "音频裁剪出点")
+        raw_end = 0.0 if end_value in (None, "") else finite_float(end_value, "Audio trim end")
         timeline_duration = positive_float(item.get("timeline_duration")) or audio_duration
         requested_end = timeline_duration if raw_end <= 0 else min(max(raw_end, 0.0), timeline_duration)
         if requested_end <= requested_start:
-            raise ValueError(f"无效音频裁剪区间：{requested_start:.3f}s–{requested_end:.3f}s")
+            raise ValueError(f"Invalid audio trim range: {requested_start:.3f}s–{requested_end:.3f}s")
         target_duration = requested_end - requested_start
-        validate_audio_duration(target_duration, "每段参考音频")
+        validate_audio_duration(target_duration, "each reference audio track")
 
         offset = 0.0
         if align_to_video:
             if not container.streams.video:
-                raise ValueError(f"无法按视频时间轴对齐：媒体文件不含视频流：{item['path']}")
+                raise ValueError(f"Cannot align with video timeline: media file contains no video stream: {item['path']}")
             offset = stream_start_seconds(container.streams.video[0]) - stream_start_seconds(stream)
         source_start = requested_start + offset
         source_end = requested_end + offset
@@ -436,7 +436,7 @@ def load_audio(item: dict[str, Any]) -> tuple[dict[str, Any], float]:
             decoded = F.pad(decoded, (0, expected - decoded.shape[-1]))
         waveform = decoded[..., :expected]
     if waveform.shape[-1] <= 0:
-        raise ValueError(f"音频没有可解码采样：{item['path']}")
+        raise ValueError(f"Audio has no decodable samples: {item['path']}")
     normalized = normalize_audio_for_h3({"waveform": waveform.unsqueeze(0), "sample_rate": sample_rate})
     return normalized, normalized["waveform"].shape[-1] / sample_rate
 
@@ -445,7 +445,7 @@ def _reference_decode_dimensions(stream: Any, frame: Any, rotation_quarters: int
     raw_width = int(getattr(stream, "width", 0) or getattr(frame, "width", 0) or 0)
     raw_height = int(getattr(stream, "height", 0) or getattr(frame, "height", 0) or 0)
     if raw_width <= 0 or raw_height <= 0:
-        raise ValueError("视频帧宽高无效")
+        raise ValueError("Invalid video frame dimensions")
     sar = positive_float(getattr(stream, "sample_aspect_ratio", None)) or 1.0
     if not 0.05 <= sar <= 20.0:
         sar = 1.0
@@ -461,10 +461,10 @@ def _reference_decode_dimensions(stream: Any, frame: Any, rotation_quarters: int
 
 
 def _decode_video_rgb24(path: Path, start: float, end: float) -> torch.Tensor:
-    start = finite_float(start, "视频裁剪入点")
-    end = finite_float(end, "视频裁剪出点")
+    start = finite_float(start, "Video trim start")
+    end = finite_float(end, "Video trim end")
     if end <= start:
-        raise ValueError(f"无效视频裁剪区间：{start:.3f}s–{end:.3f}s")
+        raise ValueError(f"Invalid video trim range: {start:.3f}s–{end:.3f}s")
     target_count = max(1, round((end - start) * FPS))
     result: torch.Tensor | None = None
     target_index = 0
@@ -480,14 +480,14 @@ def _decode_video_rgb24(path: Path, start: float, end: float) -> torch.Tensor:
             result = torch.empty((target_count, *image.shape), dtype=torch.float32)
         elif tuple(result.shape[1:]) != tuple(image.shape):
             raise ValueError(
-                f"视频帧尺寸在解码过程中发生变化：{tuple(result.shape[1:])} → {tuple(image.shape)}"
+                f"Video frame dimensions changed during decoding: {tuple(result.shape[1:])} → {tuple(image.shape)}"
             )
         result[target_index].copy_(torch.from_numpy(image).to(torch.float32).div_(255.0))
         target_index += 1
 
     with av.open(str(path)) as container:
         if not container.streams.video:
-            raise ValueError(f"媒体文件不含视频流：{path.name}")
+            raise ValueError(f"Media file contains no video stream: {path.name}")
         stream = container.streams.video[0]
         time_base = float(stream.time_base) if stream.time_base is not None else 0.0
         stream_start_pts = int(stream.start_time or 0)
@@ -536,11 +536,11 @@ def _decode_video_rgb24(path: Path, start: float, end: float) -> torch.Tensor:
                 break
 
     if previous is None:
-        raise ValueError(f"视频没有可解码帧：{path.name}")
+        raise ValueError(f"Video has no decodable frames: {path.name}")
     while target_index < target_count:
         store(previous[1])
     if result is None:
-        raise RuntimeError("视频解码结果为空")
+        raise RuntimeError("Video decoding result is empty")
     return result
 
 
@@ -557,18 +557,18 @@ def load_video(
     start_value = item.get("trim_start", 0.0)
     start = min(
         max(
-            finite_float(0.0 if start_value in (None, "") else start_value, "视频裁剪入点"),
+            finite_float(0.0 if start_value in (None, "") else start_value, "Video trim start"),
             0.0,
         ),
         video_duration,
     )
     end_value = item.get("trim_end", 0.0)
-    raw_end = 0.0 if end_value in (None, "") else finite_float(end_value, "视频裁剪出点")
+    raw_end = 0.0 if end_value in (None, "") else finite_float(end_value, "Video trim end")
     end = video_duration if raw_end <= 0 else min(max(raw_end, 0.0), video_duration)
     if end <= start:
-        raise ValueError(f"无效视频裁剪区间：{start:.3f}s–{end:.3f}s")
+        raise ValueError(f"Invalid video trim range: {start:.3f}s–{end:.3f}s")
     clip_duration = end - start
-    validate_reference_duration(clip_duration, "每段参考视频")
+    validate_reference_duration(clip_duration, "each reference video clip")
 
     selected_frame_count = max(1, round(clip_duration * FPS))
     decoded_frame_count = (
@@ -577,7 +577,7 @@ def load_video(
         else selected_frame_count
     )
     if decoded_frame_count < 5:
-        raise ValueError("MiniMax H3 参考视频有效帧数不足 5 帧")
+        raise ValueError("MiniMax H3 reference video has fewer than 5 valid frames")
     frames = _decode_video_rgb24(path, start, min(end, start + decoded_frame_count / FPS))
 
     soundtrack = None
@@ -612,19 +612,19 @@ def validate_reference_limits(
     embedded_audio_count: int = 0,
 ) -> None:
     if len(images) > 9 or len(videos) > 3 or len(audios) > 3 or len(paired_audio) > 3:
-        raise ValueError("Ref2VA 最多支持 9 张图片、3 段视频、3 段配对音频和 3 段独立音频")
+        raise ValueError("Ref2VA supports up to 9 images, 3 videos, 3 paired audio tracks, and 3 standalone audio tracks")
     if not images and not videos and audios:
-        raise ValueError("独立音频不能作为唯一参考；请至少提供图片或视频")
+        raise ValueError("Standalone audio cannot be the sole reference; please provide at least an image or video")
     expected_paired = {name.replace("ref_video_", "ref_video_audio_") for name in videos}
     orphan = set(paired_audio) - expected_paired
     if orphan:
-        raise ValueError(f"配对音频缺少同编号视频：{', '.join(sorted(orphan))}")
+        raise ValueError(f"Paired audio is missing matching reference video: {', '.join(sorted(orphan))}")
     if any(not MIN_REFERENCE_SECONDS <= duration <= MAX_REFERENCE_SECONDS for duration in video_durations):
-        raise ValueError("每段参考视频必须为 2–15 秒")
+        raise ValueError("Each reference video clip must be 2–15 seconds")
     if sum(video_durations) > MAX_REFERENCE_SECONDS + 1e-6:
-        raise ValueError("参考视频总时长不能超过 15 秒")
+        raise ValueError("Total reference video duration cannot exceed 15 seconds")
     for duration in audio_durations:
         validate_audio_duration(duration)
     file_count = len(images) + len(videos) + len(audios) + len(paired_audio) - embedded_audio_count
     if file_count > 12:
-        raise ValueError("Ref2VA 混合参考文件总数不能超过 12")
+        raise ValueError("Ref2VA total mixed reference count cannot exceed 12")

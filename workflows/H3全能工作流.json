@@ -31,7 +31,7 @@
       ],
       "outputs": [
         {
-          "label": "噪波生成",
+          "label": "Noise Gen",
           "name": "NOISE",
           "type": "NOISE",
           "links": [
@@ -100,7 +100,7 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "模型",
+          "label": "Model",
           "name": "model",
           "type": "MODEL",
           "link": 324
@@ -177,7 +177,7 @@
       ],
       "outputs": [
         {
-          "label": "文本",
+          "label": "Text Prompt",
           "name": "text",
           "type": "*",
           "links": [
@@ -185,13 +185,13 @@
           ]
         },
         {
-          "label": "显示帮助",
+          "label": "Show Help",
           "name": "show_help",
           "type": "STRING",
           "links": null
         }
       ],
-      "title": "文本",
+      "title": "Text Prompt",
       "properties": {
         "cnr_id": "ComfyUI_Comfyroll_CustomNodes",
         "ver": "d78b780ae43fcf8c6b7c6505e6ffb4584281ceca",
@@ -203,7 +203,7 @@
         }
       },
       "widgets_values": [
-        "8 秒 AI 应用产品概念动画，16:9 横版，高级编辑感半调纸拼贴风格。\n\n从干净的深紫色纤维纸背景开始。0–2 秒，代表信息与任务的独立纸片从画面四周依次滑入：黑白半调文档剪影、对话气泡、日历卡片、数据图表和小型齿轮，所有物件均无可读文字、数字或 UI。每张纸片滑入后轻微回弹，并伴随柔和纸张摩擦声。\n\n2–4 秒，一个抽象的 AI 核心从画面中央弹入，由黑白半调人脑轮廓、青绿色电路纸条和暖白描边组成。周围零散信息纸片被青绿色连接纸带逐一连接到 AI 核心，纸带出现时带有轻微弹入和纸片脆响。\n\n4–6 秒，AI 核心快速整理输入内容。杂乱纸片重新排列成三个清晰输出模块：完成的任务卡片、结构化图表和发光创意灯泡。每个模块依次弹入、轻微回弹、压平并锁定位置，表现 AI 应用将复杂信息转化为清晰结果。\n\n6–8 秒，所有纸片完成组装，形成一个层次清楚的完整产品生态构图：中央 AI 核心，左侧输入信息，右侧输出成果，前景加入少量青绿和焦橙色卡纸点缀。镜头保持静止，最终画面停留约 1 秒。\n\n视觉风格：flat bold color field, black-and-white halftone photographic cut-outs, selective teal and burnt-orange cardstock accents, warm cream keylines, soft paper shadows, fine uncoated-paper grain, premium editorial paper collage, clean refined hand-torn paper edges, subtle fibrous edges, layered paper seams.\n\n运动必须像触感停格纸拼贴：逐片出现、滑入或弹入、轻微回弹、压平、暂停、锁定。同步生成纸片滑动、弹入、压平轻敲、轻微摩擦和小纸片脆响。\n\n不要添加 BGM、旁白、对话或字幕。不要出现可读文字、数字、Logo、水印、假 UI 或屏幕界面。不要使用慢速缩放、运镜、整体淡入、平滑数字图层移动、快速旋转、物件混乱飞散、变形或新增物件。\n"
+        "8-second AI application product concept animation, 16:9 landscape, premium editorial halftone paper collage style.\n\nStarts with a clean deep purple fibrous paper background. 0–2s: individual paper scraps representing information and tasks slide in smoothly from around the frame: black-and-white halftone document silhouettes, speech bubbles, calendar cards, data charts, and small gears, all items without legible text, numbers, or UI. Each paper piece slides in with a slight bounce and soft paper friction sound.\n\n2–4s: an abstract AI core pops into the center, composed of a black-and-white halftone human brain silhouette, teal circuit paper strips, and warm white outlines. Surrounding scattered paper pieces are connected one by one to the AI core with teal paper ribbons, appearing with a subtle pop and paper snap.\n\n4–6s: the AI core quickly organizes input content. Cluttered papers rearrange into three clear output modules: completed task cards, structured charts, and a glowing idea lightbulb. Each module pops in sequentially, slightly bounces, flattens, and locks into place, demonstrating the AI app converting complex information into clear results.\n\n6–8s: all paper pieces complete assembly into a well-layered full product ecosystem composition: central AI core, left input information, right output results, foreground accented with selective teal and burnt-orange cardstock. The camera remains static, final frame holds for about 1 second.\n\nVisual style: flat bold color field, black-and-white halftone photographic cut-outs, selective teal and burnt-orange cardstock accents, warm cream keylines, soft paper shadows, fine uncoated-paper grain, premium editorial paper collage, clean refined hand-torn paper edges, subtle fibrous edges, layered paper seams.\n\nMotion must feel like tactile stop-motion paper collage: appear frame-by-frame, slide or pop in, slight bounce, flatten, pause, lock. Synchronized paper slide, pop-in, flatten tap, subtle friction, and crisp paper rustle.\n\nDo not add BGM, voiceover, dialogue, or subtitles. Do not include legible text, numbers, logos, watermarks, fake UI, or screen interfaces. Avoid slow zooms, camera pans, overall fade-ins, smooth digital layer movement, rapid spinning, chaotic flying pieces, morphing, or newly added items.\n"
       ]
     },
     {
@@ -223,16 +223,16 @@
       "inputs": [],
       "outputs": [
         {
-          "label": "可选连接",
+          "label": "Optional Connections",
           "name": "OPT_CONNECTION",
           "type": "*",
           "links": null
         }
       ],
-      "title": "报错就关了！",
+      "title": "Bypass if error!",
       "properties": {
         "matchColors": "",
-        "matchTitle": "加速",
+        "matchTitle": "Speedup",
         "showNav": true,
         "showAllGraphs": true,
         "sort": "position",
@@ -454,7 +454,7 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "模型",
+          "label": "Model",
           "name": "model",
           "type": "MODEL",
           "link": 318
@@ -462,7 +462,7 @@
       ],
       "outputs": [
         {
-          "label": "模型",
+          "label": "Model",
           "name": "model",
           "type": "MODEL",
           "links": [
@@ -498,13 +498,13 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "模型",
+          "label": "Model",
           "name": "model",
           "type": "MODEL",
           "link": 341
         },
         {
-          "label": "条件",
+          "label": "Conditioning",
           "name": "conditioning",
           "type": "CONDITIONING",
           "link": 337
@@ -512,7 +512,7 @@
       ],
       "outputs": [
         {
-          "label": "引导",
+          "label": "Guidance",
           "name": "GUIDER",
           "type": "GUIDER",
           "links": [
@@ -548,19 +548,19 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "噪波生成",
+          "label": "Noise Gen",
           "name": "noise",
           "type": "NOISE",
           "link": 231
         },
         {
-          "label": "引导",
+          "label": "Guidance",
           "name": "guider",
           "type": "GUIDER",
           "link": 232
         },
         {
-          "label": "采样器",
+          "label": "Sampler",
           "name": "sampler",
           "type": "SAMPLER",
           "link": 353
@@ -580,7 +580,7 @@
       ],
       "outputs": [
         {
-          "label": "输出",
+          "label": "Output",
           "name": "output",
           "type": "LATENT",
           "links": [
@@ -589,7 +589,7 @@
           ]
         },
         {
-          "label": "降噪输出",
+          "label": "Denoised Output",
           "name": "denoised_output",
           "type": "LATENT",
           "links": []
@@ -623,20 +623,20 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "图像",
+          "label": "Image",
           "name": "images",
           "type": "IMAGE",
           "link": 354
         },
         {
-          "label": "音频",
+          "label": "Audio",
           "name": "audio",
           "shape": 7,
           "type": "AUDIO",
           "link": 355
         },
         {
-          "label": "批次管理",
+          "label": "Batch Management",
           "name": "meta_batch",
           "shape": 7,
           "type": "VHS_BatchManager",
@@ -745,7 +745,7 @@
       ],
       "outputs": [
         {
-          "label": "文件名",
+          "label": "Filename",
           "name": "Filenames",
           "type": "VHS_FILENAMES",
           "links": null
@@ -1014,7 +1014,7 @@
       ],
       "outputs": [
         {
-          "label": "宽度",
+          "label": "Width",
           "name": "width",
           "type": "INT",
           "links": [
@@ -1022,7 +1022,7 @@
           ]
         },
         {
-          "label": "高度",
+          "label": "Height",
           "name": "height",
           "type": "INT",
           "links": [
@@ -1078,7 +1078,7 @@
       ],
       "outputs": [
         {
-          "label": "图像",
+          "label": "Image",
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
@@ -1114,7 +1114,7 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "任意",
+          "label": "Any",
           "name": "anything",
           "shape": 7,
           "type": "*",
@@ -1159,7 +1159,7 @@
       ],
       "outputs": [
         {
-          "label": "输出",
+          "label": "Output",
           "name": "output",
           "type": "*",
           "links": null
@@ -1198,7 +1198,7 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "任意",
+          "label": "Any",
           "name": "anything",
           "shape": 7,
           "type": "*",
@@ -1225,7 +1225,7 @@
       ],
       "outputs": [
         {
-          "label": "输出",
+          "label": "Output",
           "name": "output",
           "type": "*",
           "links": [
@@ -1280,7 +1280,7 @@
       ],
       "outputs": [
         {
-          "label": "音频",
+          "label": "Audio",
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
@@ -1393,7 +1393,7 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "模型",
+          "label": "Model",
           "name": "model",
           "type": "MODEL",
           "link": 358
@@ -1488,7 +1488,7 @@
       ],
       "outputs": [
         {
-          "label": "模型",
+          "label": "Model",
           "name": "MODEL",
           "type": "MODEL",
           "links": [
@@ -1536,7 +1536,7 @@
       "mode": 4,
       "inputs": [],
       "outputs": [],
-      "title": "交流分享加微信：LR2306735356（请备注来意：交流/不免费答疑、商务）",
+      "title": "Community / Business WeChat: LR2306735356 (Please state purpose: Discussion / Business)",
       "properties": {
         "fontSize": 150,
         "fontFamily": "Arial",
@@ -1574,7 +1574,7 @@
       "mode": 0,
       "inputs": [],
       "outputs": [],
-      "title": "minimax全功能工作流",
+      "title": "MiniMax All-In-One Workflow",
       "properties": {
         "fontSize": 200,
         "fontFamily": "Arial",
@@ -1612,7 +1612,7 @@
       "mode": 0,
       "inputs": [],
       "outputs": [],
-      "title": "bilibili/Youtube：在下鱼酥",
+      "title": "Bilibili / YouTube: @在下鱼酥",
       "properties": {
         "fontSize": 200,
         "fontFamily": "Arial",
@@ -1854,7 +1854,7 @@
   "groups": [
     {
       "id": 1,
-      "title": "模型",
+      "title": "Model",
       "bounding": [
         -2364.5180214161023,
         4602.381198195781,
@@ -1866,7 +1866,7 @@
     },
     {
       "id": 2,
-      "title": "采样区",
+      "title": "Sampling Area",
       "bounding": [
         -603.8207885080506,
         4595.484094919685,
@@ -1890,7 +1890,7 @@
     },
     {
       "id": 4,
-      "title": "解码区",
+      "title": "Decode Area",
       "bounding": [
         103.70749341610126,
         4600.161063535786,
@@ -1902,7 +1902,7 @@
     },
     {
       "id": 5,
-      "title": "分辨率",
+      "title": "Resolution",
       "bounding": [
         -2363.3727481125065,
         5285.463760463864,
@@ -1914,7 +1914,7 @@
     },
     {
       "id": 7,
-      "title": "提示词输入",
+      "title": "Prompt Input",
       "bounding": [
         -2359.8175437867953,
         5518.512868120972,
@@ -1926,7 +1926,7 @@
     },
     {
       "id": 8,
-      "title": "sage加速（报错关闭）",
+      "title": "SageAttention (Bypass if error)",
       "bounding": [
         -1595.742379422074,
         4390.014001522548,

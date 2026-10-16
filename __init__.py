@@ -22,17 +22,17 @@ async def inspect_media(request: web.Request) -> web.Response:
     try:
         body = await request.json()
         if not isinstance(body, dict):
-            raise ValueError("媒体检查请求必须是 JSON 对象")
+            raise ValueError("Media inspect request must be a JSON object")
         relative_path = str(body.get("path", ""))
         expected_kind = str(body.get("kind", ""))
         mime = str(body.get("mime", ""))
         path = resolve_media_path(relative_path)
         size = path.stat().st_size
         if size > MAX_UPLOAD_BYTES:
-            return web.json_response({"error": "文件超过 512 MiB 上限"}, status=413)
+            return web.json_response({"error": "File exceeds the 512 MiB limit"}, status=413)
         _extension, kind = validate_upload_name(path.name, mime)
         if expected_kind != kind:
-            raise ValueError(f"该槽位需要 {expected_kind or '未知'}，实际上传的是 {kind}")
+            raise ValueError(f"Slot requires {expected_kind or 'unknown'}, but uploaded {kind}")
         metadata = await asyncio.to_thread(validate_uploaded_file, path, kind)
         return web.json_response(
             {
@@ -45,8 +45,8 @@ async def inspect_media(request: web.Request) -> web.Response:
     except (ValueError, OSError, web.HTTPException) as error:
         return web.json_response({"error": str(error)}, status=400)
     except Exception:
-        LOGGER.exception("MiniMax H3 媒体检查发生未预期错误")
-        return web.json_response({"error": "媒体检查失败，请查看 ComfyUI 控制台日志"}, status=500)
+        LOGGER.exception("Unexpected error during MiniMax H3 media inspect")
+        return web.json_response({"error": "Media inspect failed, please check ComfyUI console logs"}, status=500)
 
 
 server_instance = getattr(PromptServer, "instance", None)

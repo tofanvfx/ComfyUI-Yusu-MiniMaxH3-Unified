@@ -53,6 +53,7 @@ assert.deepEqual(h3Test.referenceItems(tagNode, taggedMedia).map(({ tag, kind, s
     ["<Audio 2>", "audio", "ref_audio_1"],
 ]);
 assert.equal(h3Test.normalizePromptMentions("让 @图片1 在 @视频 2 中使用 @音频3 说话"), "让 <Picture 1> 在 <Video 2> 中使用 <Audio 3> 说话");
+assert.equal(h3Test.normalizePromptMentions("Let @Picture 1 in @Video 2 use @Audio 3 to speak"), "Let <Picture 1> in <Video 2> use <Audio 3> to speak");
 
 const durationNode = {
     widgets: [
@@ -205,17 +206,17 @@ assert.deepEqual(await h3Test.readJsonResponse({
     ok: true,
     status: 200,
     text: async () => '{"name":"a.wav"}',
-}, "上传"), { name: "a.wav" });
+}, "Upload"), { name: "a.wav" });
 await assert.rejects(() => h3Test.readJsonResponse({
     ok: false,
     status: 500,
     text: async () => "500 Internal Server Error",
-}, "上传"), /服务端响应异常/);
+}, "Upload"), /invalid server response/);
 await assert.rejects(() => h3Test.readJsonResponse({
     ok: true,
     status: 200,
     text: async () => "not-json",
-}, "上传"), /服务端响应异常/);
+}, "Upload"), /invalid server response/);
 
 const css = fs.readFileSync(new URL("../web/minimax_h3_unified.css", import.meta.url), "utf8");
 assert.match(css, /grid-template-rows:22px 155px 30px/);

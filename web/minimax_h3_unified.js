@@ -6,7 +6,7 @@ const IMAGE_SLOTS = Array.from({ length: 9 }, (_, i) => `ref_image_${i + 1}`);
 const VIDEO_SLOTS = Array.from({ length: 3 }, (_, i) => `ref_video_${i + 1}`);
 const PAIRED_AUDIO_SLOTS = Array.from({ length: 3 }, (_, i) => `ref_video_audio_${i + 1}`);
 const AUDIO_SLOTS = Array.from({ length: 3 }, (_, i) => `ref_audio_${i + 1}`);
-const LABELS = { first_frame: "首帧", last_frame: "尾帧" };
+const LABELS = { first_frame: "First Frame", last_frame: "Last Frame" };
 const FILE_EXTENSIONS = {
     image: new Set(["png", "jpg", "jpeg", "webp"]),
     video: new Set(["mp4", "webm", "mov", "mkv"]),
@@ -589,26 +589,26 @@ async function readJsonResponse(response, label) {
     try { result = JSON.parse(text); } catch { result = null; }
     if (!response.ok) {
         if (result?.error) throw new Error(result.error);
-        throw new Error(`${label}失败 (${response.status})，服务端响应异常，请重启 ComfyUI 后重试`);
+        throw new Error(`${label} failed (${response.status}), invalid server response, please restart ComfyUI and try again`);
     }
     if (!result || Array.isArray(result) || typeof result !== "object") {
-        throw new Error(`${label}服务端响应异常 (${response.status})，请重启 ComfyUI 后重试`);
+        throw new Error(`${label} invalid server response (${response.status}), please restart ComfyUI and try again`);
     }
     return result;
 }
 
 async function uploadFile(file) {
     const kind = fileKind(file);
-    if (!kind) throw new Error("不支持的媒体文件格式");
-    if (file.size > MAX_UPLOAD_BYTES) throw new Error("文件超过 512 MiB 上限");
+    if (!kind) throw new Error("Unsupported media file format");
+    if (file.size > MAX_UPLOAD_BYTES) throw new Error("File exceeds the 512 MiB limit");
     const data = new FormData();
     data.append("image", file);
     data.append("type", "input");
     data.append("subfolder", MEDIA_SUBDIR);
     const uploadResponse = await api.fetchApi("/upload/image", { method: "POST", body: data });
-    const uploaded = await readJsonResponse(uploadResponse, "上传");
+    const uploaded = await readJsonResponse(uploadResponse, "Upload");
     if (typeof uploaded.name !== "string" || !uploaded.name) {
-        throw new Error("上传服务未返回文件名，请重启 ComfyUI 后重试");
+        throw new Error("Upload service did not return filename, please restart ComfyUI and try again");
     }
     const path = [uploaded.subfolder, uploaded.name].filter(Boolean).join("/");
     const inspectResponse = await api.fetchApi("/minimax_h3_unified/inspect", {
@@ -618,24 +618,24 @@ async function uploadFile(file) {
     });
     if (!inspectResponse.ok) {
         if (inspectResponse.status === 404 || inspectResponse.status === 405) {
-            throw new Error("插件后端仍是旧版本，请完全重启 ComfyUI 后再刷新浏览器");
+            throw new Error("Plugin backend is outdated, please fully restart ComfyUI and refresh browser");
         }
     }
-    const result = await readJsonResponse(inspectResponse, "媒体检查");
+    const result = await readJsonResponse(inspectResponse, "Media inspect");
     return { ...result, name: file.name };
 }
 
 function dropZone(kind, choose) {
-    const names = { image: "图片", video: "视频", audio: "音频" };
+    const names = { image: "image", video: "video", audio: "audio" };
     const zone = element("div", {
         className: `h3u-drop h3u-drop-${kind}`,
         tabIndex: 0,
         role: "button",
-        ariaLabel: `拖拽或选择${names[kind]}`,
+        ariaLabel: `Drag or select ${names[kind]}`,
     }, [
         element("span", { className: "h3u-drop-icon", textContent: kind === "image" ? "▧" : kind === "video" ? "▶" : "♫" }),
-        element("span", { textContent: kind === "image" ? "拖拽图片到这里" : `拖拽${names[kind]}到轨道` }),
-        element("small", { textContent: "或点击选择" }),
+        element("span", { textContent: kind === "image" ? "Drag image here" : `Drag ${names[kind]} to track` }),
+        element("small", { textContent: "or click to select" }),
     ]);
     zone.onclick = () => choose();
     zone.onkeydown = (event) => {
@@ -683,7 +683,7 @@ function trimControls(node, stateWidget, state, slot, item, media, kind, url) {
         timeline.append(canvas);
         setupWaveformPreview(canvas, url, item);
     } else {
-        timeline.append(element("span", { className: "h3u-video-track-label", textContent: "视频轨道 · 24 FPS" }));
+        timeline.append(element("span", { className: "h3u-video-track-label", textContent: "Video Track · 24 FPS" }));
     }
     timeline.append(selection, startRange, endRange);
 
@@ -702,7 +702,7 @@ function trimControls(node, stateWidget, state, slot, item, media, kind, url) {
         const right = duration ? Number(endRange.value) / duration * 100 : 100;
         selection.style.left = `${left}%`;
         selection.style.width = `${Math.max(0, right - left)}%`;
-        durationText.textContent = `选区 ${(Number(endRange.value) - Number(startRange.value)).toFixed(3)}s`;
+        durationText.textContent = `Selection ${(Number(endRange.value) - Number(startRange.value)).toFixed(3)}s`;
     };
     startRange.oninput = startNumber.onchange = () => update(startRange === document.activeElement ? startRange : startNumber, true);
     endRange.oninput = endNumber.onchange = () => update(endRange === document.activeElement ? endRange : endNumber, false);
@@ -733,29 +733,29 @@ function trimControls(node, stateWidget, state, slot, item, media, kind, url) {
     };
     controls.append(
         element("div", { className: "h3u-track-head" }, [
-            element("strong", { textContent: kind === "video" ? "视频轨道" : "音频轨道" }),
+            element("strong", { textContent: kind === "video" ? "Video Track" : "Audio Track" }),
             durationText,
         ]),
         timeline,
         element("div", { className: "h3u-track-times" }, [
-            element("label", {}, [document.createTextNode("入点 "), startNumber]),
-            element("span", { textContent: `总长 ${duration.toFixed(3)}s` }),
-            element("label", {}, [document.createTextNode("出点 "), endNumber]),
+            element("label", {}, [document.createTextNode("In "), startNumber]),
+            element("span", { textContent: `Total ${duration.toFixed(3)}s` }),
+            element("label", {}, [document.createTextNode("Out "), endNumber]),
         ]),
     );
     syncTrack();
 
     if (media instanceof HTMLMediaElement) {
-        const play = button("播放选区", () => {
+        const play = button("Play Selection", () => {
             media.currentTime = Number(startRange.value);
             media.play();
         });
         media.ontimeupdate = () => {
             if (media.currentTime >= Number(endRange.value)) media.pause();
         };
-        controls.append(element("div", { className: "h3u-track-actions" }, [play, button("暂停", () => media.pause())]));
+        controls.append(element("div", { className: "h3u-track-actions" }, [play, button("Pause", () => media.pause())]));
     }
-    controls.querySelector(".h3u-track-actions")?.append(button("重置", () => {
+    controls.querySelector(".h3u-track-actions")?.append(button("Reset", () => {
         startRange.value = startNumber.value = 0;
         endRange.value = endNumber.value = duration;
         item.trim_start = 0;
@@ -793,10 +793,10 @@ async function waveformPeaks(url, width) {
     if (WAVEFORM_CACHE.has(key)) return WAVEFORM_CACHE.get(key);
     const promise = (async () => {
         const response = await fetch(url, { cache: "force-cache" });
-        if (!response.ok) throw new Error(`波形文件读取失败 (${response.status})`);
+        if (!response.ok) throw new Error(`Failed to read waveform file (${response.status})`);
         const bytes = await response.arrayBuffer();
         const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
-        if (!AudioContextClass) throw new Error("浏览器不支持 AudioContext");
+        if (!AudioContextClass) throw new Error("Browser does not support AudioContext");
         const context = new AudioContextClass();
         try {
             const audio = await context.decodeAudioData(bytes);
@@ -830,25 +830,25 @@ function setupWaveformPreview(canvas, url, item) {
     const fileBytes = Number(item?.size || 0);
     const duration = Number(item?.duration || 0);
     if ((fileBytes > 0 && fileBytes > MAX_WAVEFORM_BYTES) || (duration > 0 && duration > MAX_WAVEFORM_SECONDS)) {
-        paintWaveformMessage(canvas, "文件较长，已禁用整段波形解码");
-        canvas.title = "可使用上方播放器定位；为避免占用大量内存，不在浏览器中解码整段波形";
+        paintWaveformMessage(canvas, "File is long, full waveform decoding disabled");
+        canvas.title = "You can scrub using player above; to save memory, full waveform is not decoded in browser";
         return;
     }
     let loading = false;
-    paintWaveformMessage(canvas, "点击加载波形（避免自动解码占用内存）");
-    canvas.title = "点击后才会读取并解码音频波形";
+    paintWaveformMessage(canvas, "Click to load waveform (avoids automatic memory usage)");
+    canvas.title = "Click to load and decode audio waveform";
     canvas.style.cursor = "pointer";
     canvas.onclick = async (event) => {
         event.stopPropagation();
         if (loading) return;
         loading = true;
-        paintWaveformMessage(canvas, "正在加载波形…");
+        paintWaveformMessage(canvas, "Loading waveform...");
         try {
             const peaks = await waveformPeaks(url, canvas.width);
             if (canvas.isConnected) paintWaveform(canvas, peaks);
         } catch {
-            if (canvas.isConnected) paintWaveformMessage(canvas, "无法解析波形");
-            canvas.title = "浏览器无法解析该音频波形";
+            if (canvas.isConnected) paintWaveformMessage(canvas, "Could not parse waveform");
+            canvas.title = "Browser could not parse this audio waveform";
         } finally {
             loading = false;
         }
@@ -861,17 +861,17 @@ function mediaRow(node, stateWidget, state, slot, kind, rerender) {
     const ordinal = Number(slot.match(/\d+$/)?.[0] || 0);
     const isPairedAudio = slot.startsWith("ref_video_audio_");
     const label = LABELS[slot] || (kind === "image"
-        ? `参考图 ${ordinal}`
+        ? `Ref Image ${ordinal}`
         : kind === "video"
-            ? `参考视频 ${ordinal}`
+            ? `Ref Video ${ordinal}`
             : isPairedAudio
-                ? `视频 ${ordinal} 配对音频`
-                : `独立音频 ${ordinal}`);
+                ? `Video ${ordinal} Paired Audio`
+                : `Standalone Audio ${ordinal}`);
     const header = element("div", { className: "h3u-row-header" }, [
         element("strong", { textContent: label }),
     ]);
     if (linked(node, slot)) header.append(element("span", {
-        textContent: `官方外部端口 ${externalInputName(slot)} 已覆盖本槽`,
+        textContent: `Official external input ${externalInputName(slot)} overrides this slot`,
         className: "h3u-linked",
     }));
     row.append(header);
@@ -881,13 +881,13 @@ function mediaRow(node, stateWidget, state, slot, kind, rerender) {
             if (file) {
                 const detected = fileKind(file);
                 if (detected && detected !== kind) {
-                    throw new Error(`该槽位需要${kind === "image" ? "图片" : kind === "video" ? "视频" : "音频"}，拖入的文件扩展名属于${detected === "image" ? "图片" : detected === "video" ? "视频" : "音频"}`);
+                    throw new Error(`Slot requires ${kind}, but dropped file extension belongs to ${detected}`);
                 }
             }
             const uploaded = file ? await uploadFile(file) : await upload(accept);
             if (!uploaded) return;
             if (uploaded.kind !== kind) {
-                throw new Error(`该槽位需要${kind === "image" ? "图片" : kind === "video" ? "视频" : "音频"}，实际上传的是${uploaded.kind || "未知媒体"}`);
+                throw new Error(`Slot requires ${kind}, but uploaded ${uploaded.kind || "unknown media"}`);
             }
             state[slot] = { ...uploaded, trim_start: 0, trim_end: uploaded.duration || 0, use_audio: false };
             setState(node, stateWidget, state);
@@ -911,7 +911,7 @@ function mediaRow(node, stateWidget, state, slot, kind, rerender) {
     }
     const preview = dropZone(kind, choose);
     preview.classList.add("h3u-drop-filled");
-    preview.replaceChildren(media, element("span", { className: "h3u-drop-replace", textContent: "拖拽可替换" }));
+    preview.replaceChildren(media, element("span", { className: "h3u-drop-replace", textContent: "Drag to replace" }));
     row.append(preview);
     if (kind !== "image") row.append(trimControls(node, stateWidget, state, slot, item, media, kind, url));
     if (kind === "video") {
@@ -920,7 +920,7 @@ function mediaRow(node, stateWidget, state, slot, kind, rerender) {
             item.use_audio = false;
             row.append(element("span", {
                 className: "h3u-note",
-                textContent: "该视频不含音轨，不能启用“使用视频原声”。",
+                textContent: "This video has no audio track; 'Use video soundtrack' cannot be enabled.",
             }));
         } else {
             const useAudio = element("input", { type: "checkbox", checked: Boolean(item.use_audio) });
@@ -929,16 +929,16 @@ function mediaRow(node, stateWidget, state, slot, kind, rerender) {
                 setState(node, stateWidget, state);
                 rerender();
             };
-            const suffix = audioAvailability === "unknown" ? "（运行时确认音轨）" : "";
+            const suffix = audioAvailability === "unknown" ? " (soundtrack verified at runtime)" : "";
             row.append(element("label", { className: "h3u-check" }, [
                 useAudio,
-                document.createTextNode(` 使用视频原声${suffix}`),
+                document.createTextNode(` Use video soundtrack${suffix}`),
             ]));
         }
     }
     row.append(element("div", { className: "h3u-row-actions" }, [
-        button("替换", () => choose(), "secondary"),
-        button("删除", () => {
+        button("Replace", () => choose(), "secondary"),
+        button("Delete", () => {
             delete state[slot];
             setState(node, stateWidget, state);
             rerender();
@@ -950,7 +950,7 @@ function mediaRow(node, stateWidget, state, slot, kind, rerender) {
 function referenceItems(node, state) {
     const items = [];
     const active = (slot) => linked(node, slot) || Boolean(state[slot]?.path);
-    const source = (slot) => linked(node, slot) ? `外部 ${externalInputName(slot)}` : state[slot]?.name || "节点内文件";
+    const source = (slot) => linked(node, slot) ? `External ${externalInputName(slot)}` : state[slot]?.name || "In-node file";
     IMAGE_SLOTS.filter(active).forEach((slot, index) => items.push({
         tag: `<Picture ${index + 1}>`, kind: "image", slot, media: state[slot], description: `(${source(slot)})`,
     }));
@@ -965,7 +965,7 @@ function referenceItems(node, state) {
             !linked(node, slot)
             && state[slot]?.use_audio
             && videoAudioAvailability(state[slot]) !== "absent"
-        ) items.push({ tag: `<Audio ${audioIndex++}>`, kind: "audio", slot, media: state[slot], description: "原声" });
+        ) items.push({ tag: `<Audio ${audioIndex++}>`, kind: "audio", slot, media: state[slot], description: "soundtrack" });
         items.push({
             tag: `<Video ${videoIndex++}>`, kind: "video", slot, media: state[slot], description: `(${source(slot)})`,
         });
@@ -978,7 +978,7 @@ function referenceItems(node, state) {
 
 function mapping(node, state) {
     const items = referenceItems(node, state);
-    return items.map((item) => `${item.tag} ← ${item.slot} ${item.description}`).join("\n") || "暂无节点内参考素材";
+    return items.map((item) => `${item.tag} ← ${item.slot} ${item.description}`).join("\n") || "No in-node reference media";
 }
 
 function promptInput(widget) {
@@ -999,16 +999,16 @@ function setPromptValue(node, promptWidget, value) {
 }
 
 function promptMentionLabel(item) {
-    const label = { image: "图片", video: "视频", audio: "音频" }[item.kind];
+    const label = { image: "Picture", video: "Video", audio: "Audio" }[item.kind];
     const number = item.tag.match(/\d+/)?.[0] || "";
     return `@${label}${number}`;
 }
 
 function normalizePromptMentions(value) {
     return String(value || "")
-        .replace(/@图片\s*(\d+)/g, "<Picture $1>")
-        .replace(/@视频\s*(\d+)/g, "<Video $1>")
-        .replace(/@音频\s*(\d+)/g, "<Audio $1>");
+        .replace(/@(?:图片|Picture|Image)\s*(\d+)/gi, "<Picture $1>")
+        .replace(/@(?:视频|Video)\s*(\d+)/gi, "<Video $1>")
+        .replace(/@(?:音频|Audio)\s*(\d+)/gi, "<Audio $1>");
 }
 
 function promptMentionChip(item) {
@@ -1040,7 +1040,7 @@ function promptEditorValue(editor) {
 
 function renderPromptEditor(editor, node, state, value) {
     const references = new Map(referenceItems(node, state).map((item) => [promptMentionLabel(item), item]));
-    const parts = String(value || "").split(/(@(?:图片|视频|音频)\d+)/g);
+    const parts = String(value || "").split(/(@(?:Picture|Image|Video|Audio|图片|视频|音频)\d+)/gi);
     editor.replaceChildren(...parts.map((part) => {
         const item = references.get(part);
         return item ? promptMentionChip(item) : document.createTextNode(part);
@@ -1075,7 +1075,7 @@ function attachPromptEditor(node, getState, resizeNode) {
         className: "h3u-prompt-editor",
         contentEditable: "true",
         role: "textbox",
-        ariaLabel: "提示词，输入 @ 引用下方已添加的媒体",
+        ariaLabel: "Prompt, type @ to reference added media below",
         spellcheck: false,
     });
     editor.style.minHeight = `${minimumHeight}px`;
@@ -1139,7 +1139,7 @@ function attachPromptEditor(node, getState, resizeNode) {
                 textContent: "",
                 onclick: () => choose(item),
             }, [preview, element("span", { textContent: promptMentionLabel(item) })]);
-        }) : [element("span", { className: "h3u-at-empty", textContent: "请先在下方添加图片、视频或音频" })];
+        }) : [element("span", { className: "h3u-at-empty", textContent: "Please add images, videos, or audio below first" })];
         menu = element("div", { className: "h3u-at-menu", role: "menu" }, choices);
         const rangeRect = mentionRange.getBoundingClientRect();
         const rect = rangeRect.width || rangeRect.height ? rangeRect : editor.getBoundingClientRect();
@@ -1249,12 +1249,12 @@ function audioReferenceStatus(node, audioTags, promptValue = promptSource(node))
         if (audioVaeConnected) {
             return {
                 ok: null,
-                message: `audio_vae 已连接，prompt 也已通过外部端口连接。上游文本可能是动态生成，前端无法可靠读取；运行时会按实际 prompt 校验 ${audioTags.join("、")}，此处不再误报缺失。`,
+                message: `audio_vae is connected and prompt is connected via external input. Upstream text may be dynamically generated; runtime will validate ${audioTags.join(", ")}.`,
             };
         }
         return {
             ok: false,
-            message: `prompt 已通过外部端口连接，但 audio_vae 未连接，参考音频无法编码。`,
+            message: `prompt is connected via external input, but audio_vae is not connected; reference audio cannot be encoded.`,
         };
     }
 
@@ -1263,24 +1263,24 @@ function audioReferenceStatus(node, audioTags, promptValue = promptSource(node))
     if (audioVaeConnected && !missing.length) {
         return {
             ok: true,
-            message: `audio_vae 已连接，prompt 已引用：${audioTags.join("、")}。已满足参考音频编码条件。`,
+            message: `audio_vae is connected, prompt references: ${audioTags.join(", ")}. Reference audio encoding requirements met.`,
         };
     }
     if (audioVaeConnected) {
         return {
             ok: false,
-            message: `audio_vae 已连接，参考音频也已加入槽位；但 prompt 还缺少 ${missing.join("、")}。请在 prompt 中显式使用这些标签。`,
+            message: `audio_vae is connected and reference audio is in slot; but prompt is missing ${missing.join(", ")}. Please explicitly use these tags in prompt.`,
         };
     }
     if (!missing.length) {
         return {
             ok: false,
-            message: `prompt 已引用：${audioTags.join("、")}；但 audio_vae 未连接，参考音频无法编码。`,
+            message: `prompt references: ${audioTags.join(", ")}; but audio_vae is not connected, reference audio cannot be encoded.`,
         };
     }
     return {
         ok: false,
-        message: `参考音频已加入槽位；audio_vae 未连接，并且 prompt 还缺少 ${missing.join("、")}。`,
+        message: `Reference audio added to slot; audio_vae is not connected, and prompt is missing ${missing.join(", ")}.`,
     };
 }
 
@@ -1301,7 +1301,7 @@ function buildPanel(node, stateWidget) {
     const root = element("div", {
         className: "h3u-panel-host",
         tabIndex: 0,
-        title: "点击面板后可按 Ctrl+V 粘贴图片、视频或音频",
+        title: "Click panel, then press Ctrl+V to paste image, video, or audio",
     });
     const content = element("div", { className: "h3u-panel" });
     root.append(content);
@@ -1360,21 +1360,21 @@ function buildPanel(node, stateWidget) {
             ) {
                 content.append(element("div", {
                     className: "h3u-info h3u-duration-preview",
-                    textContent: `手动目标 ${requestedSeconds.toFixed(3)} 秒 → ${effectiveFrames} 帧 → 实际 ${(
+                    textContent: `Manual target ${requestedSeconds.toFixed(3)}s → ${effectiveFrames} frames → actual ${(
                         effectiveFrames / H3_FPS
-                    ).toFixed(3)} 秒${effectiveFrames > TRAINED_MAX_FRAMES ? "（未限制，已超过常见训练范围）" : ""}。`,
+                    ).toFixed(3)}s${effectiveFrames > TRAINED_MAX_FRAMES ? " (unrestricted, exceeds common training range)" : ""}.`,
                 }));
             }
         }
         if (mode === "text_to_video") {
             content.append(
-                panelHeading("文生视频"),
-                element("div", { textContent: "当前模式只使用提示词，节点内媒体不会参与生成。", className: "h3u-empty-state" }),
+                panelHeading("Text to Video"),
+                element("div", { textContent: "Current mode only uses prompt; in-node media will not participate in generation.", className: "h3u-empty-state" }),
             );
         } else if (mode === "first_last_frame") {
             content.append(
-                panelHeading("首尾帧", ["外部端口优先"]),
-                sectionHeading("画面锚点", "首帧与尾帧可独立设置"),
+                panelHeading("First / Last Frame", ["External Inputs Preferred"]),
+                sectionHeading("Frame Anchors", "First and last frames can be configured independently"),
             );
             content.append(element("div", { className: "h3u-media-grid h3u-frame-grid" }, [
                 mediaRow(node, stateWidget, state, "first_frame", "image", scheduleRender),
@@ -1385,11 +1385,11 @@ function buildPanel(node, stateWidget) {
             const videoCount = VIDEO_SLOTS.filter((slot) => linked(node, slot) || state[slot]?.path).length;
             const pairedAudioCount = PAIRED_AUDIO_SLOTS.filter((slot) => linked(node, slot) || state[slot]?.path).length;
             const audioCount = AUDIO_SLOTS.filter((slot) => linked(node, slot) || state[slot]?.path).length;
-            content.append(panelHeading("全模态参考", [
-                `图片 ${imageCount}/9`,
-                `视频 ${videoCount}/3`,
-                `配对音频 ${pairedAudioCount}/3`,
-                `独立音频 ${audioCount}/3`,
+            content.append(panelHeading("Omni Reference", [
+                `Images ${imageCount}/9`,
+                `Videos ${videoCount}/3`,
+                `Paired Audio ${pairedAudioCount}/3`,
+                `Standalone Audio ${audioCount}/3`,
             ]));
             const imageSlotCount = slotCount(state, "image_count", IMAGE_SLOTS, node);
             const videoSlotCount = slotCount(state, "video_count", VIDEO_SLOTS, node, PAIRED_AUDIO_SLOTS);
@@ -1398,20 +1398,20 @@ function buildPanel(node, stateWidget) {
             const visibleVideoSlots = visibleSlots(VIDEO_SLOTS, videoSlotCount, node, state, PAIRED_AUDIO_SLOTS);
             const visibleAudioSlots = visibleSlots(AUDIO_SLOTS, audioSlotCount, node, state);
             content.append(element("div", { className: "h3u-counts h3u-toolbar" }, [
-                element("strong", { textContent: "节点内槽位" }),
-                countSelector(node, stateWidget, state, "参考图", "image_count", IMAGE_SLOTS, scheduleRender),
-                countSelector(node, stateWidget, state, "参考视频", "video_count", VIDEO_SLOTS, scheduleRender, PAIRED_AUDIO_SLOTS),
-                countSelector(node, stateWidget, state, "独立音频", "audio_count", AUDIO_SLOTS, scheduleRender),
+                element("strong", { textContent: "In-Node Slots" }),
+                countSelector(node, stateWidget, state, "Images", "image_count", IMAGE_SLOTS, scheduleRender),
+                countSelector(node, stateWidget, state, "Videos", "video_count", VIDEO_SLOTS, scheduleRender, PAIRED_AUDIO_SLOTS),
+                countSelector(node, stateWidget, state, "Audio", "audio_count", AUDIO_SLOTS, scheduleRender),
             ]));
             const mapText = mapping(node, state);
-            content.append(helpDetails("使用帮助与标签映射", [
+            content.append(helpDetails("Help & Tag Mapping", [
                 element("p", {
                     className: "h3u-help-copy",
-                    textContent: "点击面板后按 Ctrl+V，可将剪贴板中的图片、视频或音频加入第一个空槽位。",
+                    textContent: "Click panel then press Ctrl+V to paste clipboard image, video, or audio into the first empty slot.",
                 }),
                 element("p", {
                     className: "h3u-help-copy",
-                    textContent: "ref_video_audio_0～2 是同编号视频的配对音轨；ref_audio_0～2 是独立参考音频。同槽存在节点内素材和外部接口时，外部接口优先。",
+                    textContent: "ref_video_audio_0–2 are paired audio tracks for matching videos; ref_audio_0–2 are standalone reference audio tracks. External inputs take priority over in-node files.",
                 }),
                 element("pre", { textContent: mapText, className: "h3u-map" }),
             ]));
@@ -1423,7 +1423,7 @@ function buildPanel(node, stateWidget) {
             }
             if (visibleImageSlots.length) {
                 content.append(
-                    sectionHeading("参考图片", `${imageCount}/${imageSlotCount} 已使用`),
+                    sectionHeading("Reference Images", `${imageCount}/${imageSlotCount} in use`),
                     element("div", { className: "h3u-media-grid h3u-image-grid" }, visibleImageSlots.map((slot) => mediaRow(node, stateWidget, state, slot, "image", scheduleRender))),
                 );
             }
@@ -1436,20 +1436,20 @@ function buildPanel(node, stateWidget) {
                 if (!(linked(node, slot) || state[slot]?.path) && (linked(node, audioSlot) || state[audioSlot]?.path)) {
                     pair.prepend(element("div", {
                         className: "h3u-warning",
-                        textContent: `${externalInputName(audioSlot)} 必须与同编号 ${externalInputName(slot)} 一起使用；当前缺少对应参考视频。`,
+                        textContent: `${externalInputName(audioSlot)} must be used with matching ${externalInputName(slot)}; corresponding reference video is currently missing.`,
                     }));
                 }
                 return pair;
             });
             if (videoPairs.length) {
                 content.append(
-                    sectionHeading("参考视频", `${videoPairs.length} 组视频与配对音轨`),
+                    sectionHeading("Reference Videos", `${videoPairs.length} video & paired audio track(s)`),
                     element("div", { className: "h3u-media-grid" }, videoPairs),
                 );
             }
             if (visibleAudioSlots.length) {
                 content.append(
-                    sectionHeading("独立参考音频", `${audioCount}/${audioSlotCount} 已使用`),
+                    sectionHeading("Standalone Reference Audio", `${audioCount}/${audioSlotCount} in use`),
                     element("div", { className: "h3u-media-grid" }, visibleAudioSlots.map((slot) => mediaRow(node, stateWidget, state, slot, "audio", scheduleRender))),
                 );
             }
@@ -1475,16 +1475,16 @@ function buildPanel(node, stateWidget) {
             const kind = fileKind(file);
             const slot = firstOpenMediaSlot(node, state, kind);
             if (!slot) {
-                errors.push(`${kind === "image" ? "图片" : kind === "video" ? "视频" : "音频"}槽位已满：${file.name}`);
+                errors.push(`${kind === "image" ? "Image" : kind === "video" ? "Video" : "Audio"} slots full: ${file.name}`);
                 continue;
             }
             try {
                 const uploaded = await uploadFile(file);
-                if (uploaded.kind !== kind) throw new Error(`媒体类型不匹配：${file.name}`);
+                if (uploaded.kind !== kind) throw new Error(`Media type mismatch: ${file.name}`);
                 state[slot] = { ...uploaded, trim_start: 0, trim_end: uploaded.duration || 0, use_audio: false };
                 changed = true;
             } catch (error) {
-                errors.push(`${file.name}：${error.message}`);
+                errors.push(`${file.name}: ${error.message}`);
             }
         }
         if (changed) {
